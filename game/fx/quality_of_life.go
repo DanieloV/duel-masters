@@ -66,6 +66,52 @@ func Select(p *match.Player, m *match.Match, containerOwner *match.Player, conta
 	return SelectFilter(p, m, containerOwner, containerName, text, min, max, cancellable, func(x *match.Card) bool { return true })
 }
 
+// Select Draw Count prompts to user to select how many cards to draw with upper and lower limits
+func SelectDrawCount(p *match.Player, m *match.Match, text string, min int, max int) int {
+	result := 0
+
+	m.NewDrawCountAction(p, text, min, max)
+
+	defer m.CloseAction(p)
+
+	if !m.IsPlayerTurn(p) {
+		m.Wait(m.Opponent(p), "Waiting for your opponent to make an action")
+		defer m.EndWait(m.Opponent(p))
+	}
+
+	for {
+
+		action := <-p.Action
+
+		if action.DrawCount < min || action.DrawCount > max {
+			m.ActionWarning(p, "The amount of cards to draw does not match the requirements")
+			continue
+		}
+
+		result = action.DrawCount
+
+		break
+
+	}
+
+	return result
+}
+
+func BinaryQuestion(p *match.Player, m *match.Match, text string) bool {
+	m.NewQuestionAction(p, text)
+
+	defer m.CloseAction(p)
+
+	if !m.IsPlayerTurn(p) {
+		m.Wait(m.Opponent(p), "Waiting for your opponent to make an action")
+		defer m.EndWait(m.Opponent(p))
+	}
+
+	action := <-p.Action
+
+	return !action.Cancel
+}
+
 // SelectFilter prompts the user to select n cards from the specified container that matches the given filter
 //
 // Deprecated: New cards should use `fx.SelectFilterFullList`
@@ -402,4 +448,35 @@ func ShieldBroken(card *match.Card, ctx *match.Context) bool {
 	_, ok := ctx.Event.(*match.BrokenShieldEvent)
 	return ok
 
+}
+
+func AnotherCreatureSummoned(card *match.Card, ctx *match.Context) bool {
+	if card.Zone != match.BATTLEZONE {
+		return false
+	}
+
+	if event, ok := ctx.Event.(*match.CardMoved); ok {
+
+		if event.CardID != card.ID && event.To == match.BATTLEZONE {
+			return true
+		}
+
+	}
+
+	return false
+}
+
+func AnotherCreatureDestroyed(card *match.Card, ctx *match.Context) bool {
+	if card.Zone != match.BATTLEZONE {
+		return false
+	}
+
+	if event, ok := ctx.Event.(*match.CardMoved); ok &&
+		event.From == match.BATTLEZONE &&
+		event.To == match.GRAVEYARD &&
+		event.CardID != card.ID {
+		return true
+	}
+
+	return false
 }
