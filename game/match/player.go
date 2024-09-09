@@ -347,14 +347,14 @@ func (p *Player) DrawCards(n int) {
 	}
 
 	if n == 1 {
-		p.match.Chat("Server", fmt.Sprintf("%s drew %v card", p.match.PlayerRef(p).Socket.User.Username, n))
+		p.match.ReportActionInChat(p, fmt.Sprintf("%s drew %v card", p.match.PlayerRef(p).Socket.User.Username, n))
 	} else {
-		p.match.Chat("Server", fmt.Sprintf("%s drew %v cards", p.match.PlayerRef(p).Socket.User.Username, n))
+		p.match.ReportActionInChat(p, fmt.Sprintf("%s drew %v cards", p.match.PlayerRef(p).Socket.User.Username, n))
 	}
 
 	if len(p.deck) <= 0 {
 		// deck out
-		p.match.End(p.match.Opponent(p), fmt.Sprintf("%s won by deck out!", p.match.Opponent(p).Username()))
+		p.match.ReportActionInChat(p.match.Opponent(p), fmt.Sprintf("%s won by deck out!", p.match.Opponent(p).Username()))
 	}
 
 }
@@ -476,7 +476,7 @@ func (p *Player) MoveCard(cardID string, from string, to string, source string) 
 		From:          from,
 		To:            to,
 		Source:        source,
-		MatchPlayerID: p.match.getPlayerMatchId(ref),
+		MatchPlayerID: p.match.getPlayerMatchId(ref.Player),
 	}))
 
 	return ref, nil

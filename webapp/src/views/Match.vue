@@ -51,6 +51,12 @@
       </p>
     </div>
 
+    <CardPreviewPopup 
+      :uid = chatCardPreviewUID
+      :event = chatCardEvent
+      :side = "'right'"
+    />
+
     <div v-if="previewCard" class="card-preview">
       <img :src="`https://scans.shobu.io/${previewCard.uid}.jpg`" />
       <div @click="dismissLarge()" class="btn">Close</div>
@@ -222,16 +228,14 @@
         :style="playmat ? 'background: url(/assets/images/overlay_30.png)' : ''"
       >
         <div class="messages">
-          <div id="messages" class="messages-helper">
+          <div id="messages" class="messages-helper flex flex-col">
             <div
               class="message"
-              :style="{
-                background:
-                  message.sender.toLowerCase() === 'server'
-                    ? 'none'
-                    : playmat
-                    ? 'url(/assets/images/overlay_30.png)'
-                    : '#202124'
+              :class="{
+                'server_action_player_1': message.sender.toLowerCase() === 'server_1',
+                'server_action_player_2': message.sender.toLowerCase() === 'server_2',
+                'chat-message': !isFromServer(message) && !playmat,
+                'chat-message-playmat': !isFromServer(message) && playmat,
               }"
               v-for="(message, index) in chatMessages.filter(
                 m => !settings.muted.includes(m.sender)
@@ -241,6 +245,8 @@
               <div
                 class="message-sender"
                 :style="{ color: message.color || 'orange' }"
+                v-if="message.sender.toLowerCase() != 'server_1' && 
+                      message.sender.toLowerCase() != 'server_2'"
               >
                 {{
                   message.sender.toLowerCase() == "server"
@@ -248,11 +254,26 @@
                     : message.sender + ":"
                 }}
               </div>
-              <div class="message-text">{{ message.message }}</div>
+              <div class="message-text">
+                <template v-for="obj in message.message">
+                  <template v-if="obj.uid">
+                    <span
+                      @mouseover="chatCardEvent = $event; chatCardPreviewUID = obj.uid"
+                      @mouseleave="chatCardPreviewUID = null"
+                      class="chat-card"
+                    >
+                      {{ obj.text }}
+                    </span>
+                  </template>
+                  <template v-else>
+                    {{ obj.text }}
+                  </template> 
+                </template>
+              </div>
               <div class="mute-icon-container">
                 <MuteIcon
                   v-if="
-                    !['server', username].includes(message.sender.toLowerCase())
+                    !['server', 'server_1', 'server_2', username].includes(message.sender.toLowerCase())
                   "
                   :player="message.sender"
                   @toggled="onSettingsChanged()"
@@ -720,6 +741,7 @@ import Username from "../components/Username.vue";
 import MuteIcon from "../components/MuteIcon.vue";
 import { getSettings, didSeeMuteWarning } from "../helpers/settings";
 import { store } from "../store";
+import CardPreviewPopup from "../components/CardPreviewPopup.vue";
 
 const send = (client, message) => {
   client.send(JSON.stringify(message));
@@ -744,11 +766,34 @@ function sound(src) {
 let turnSound = new sound("/assets/turn.mp3");
 let playerJoinedSound = new sound("/assets/player_joined.mp3");
 
+function splitServerMessage(text) {
+  let textParts = []
+  let currentIndex = 0
+  const regExp = /\(([^)]+)\)/g;
+  let parts;
+  let execResult = regExp.exec(text)
+  while (execResult !== null ) {
+    if (execResult.index > currentIndex) {
+      textParts.push({text: text.substring(currentIndex, execResult.index) })
+      currentIndex = execResult.index
+    }
+    parts = execResult[1].split(";")
+    textParts.push({text: parts[0], uid: parts[1]})
+    currentIndex += execResult[0].length
+    execResult = regExp.exec(text)
+  }
+  if (currentIndex < text.length) {
+    textParts.push({text: text.substring(currentIndex, text.length) })
+  }
+  return textParts;
+}
+
 export default {
   name: "game",
   components: {
     Username,
-    MuteIcon
+    MuteIcon,
+    CardPreviewPopup,
   },
   data() {
     return {
@@ -804,7 +849,10 @@ export default {
 
       TAPPED_FLAG: 1,
       PLAYABLE_FLAG: 2,
-      TAP_ABILITY_FLAG: 4
+      TAP_ABILITY_FLAG: 4,
+
+      chatCardPreviewUID: null,
+      chatCardEvent: null,
     };
   },
   computed: {
@@ -829,6 +877,18 @@ export default {
         let container = document.getElementById("messages");
         container.scrollTop = container.scrollHeight;
       });
+    },
+
+    isFromServer(messageObj){
+      let sender = messageObj.sender.toLowerCase()
+      if ( 
+        sender === 'server' ||
+        sender === 'server_1' ||
+        sender === 'server_2'
+      )
+        return true;
+
+      return false;
     },
 
     onSettingsChanged(e) {
@@ -1261,7 +1321,7 @@ export default {
           }
 
           case "chat": {
-            this.chat(data.sender, data.color, data.message);
+            this.chat(data.sender, data.color, splitServerMessage(data.message));
             break;
           }
 
@@ -1866,10 +1926,6 @@ export default {
   margin-bottom: 3px;
 }
 
-.bt {
-  /* border-top: 1px solid #555; */
-}
-
 .hand {
   width: calc(100% - 301px);
   float: left;
@@ -2002,5 +2058,30 @@ export default {
 
 .inactive-svg-button {
   filter: grayscale(10); 
+}
+
+.chat-card {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.server_action_player_1 {
+  max-width: 80%;
+  align-self: flex-start;
+  background: rgba(181, 124, 60, 0.4)
+}
+
+.server_action_player_2 {
+  max-width: 80%;
+  align-self: flex-end;
+  background: rgba(124, 127, 143, 0.5)
+}
+
+.chat-message {
+  background: #202124
+}
+
+.chat-message-playmat {
+  background: rgba(0, 0, 0, 0.3)
 }
 </style>
