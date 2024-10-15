@@ -1,5 +1,8 @@
 <template>
-  <div>
+  <template v-if="packs">
+    <PackOpener :packs="packs"/>
+  </template>
+  <div v-else>
     <div v-show="warning" @click="closeOverlay()" class="overlay"></div>
     <div v-show="warning" class="error">
       <p class="whitespace-pre-wrap">{{ warning }}</p>
@@ -15,7 +18,6 @@
         :eventMode="true"
         v-model:deck="deckCards"
       />
-
       <div class="right">  
         <!-- Add event name and deck size -->
         <span class="deck-card-total mr-4">({{deckCards.length}})</span>
@@ -39,6 +41,7 @@ import { call } from "../remote";
 import Header from "../components/Header.vue";
 import CardsCatalogue from "../components/CardsCatalogue.vue";
 import DeckList from "../components/DeckList.vue";
+import PackOpener from "../components/PackOpener.vue";
 
 export default {
   name: "event_deck",
@@ -46,6 +49,7 @@ export default {
     CardsCatalogue,
     DeckList,
     Header,
+    PackOpener,
   },
   computed: {
     username: () => localStorage.getItem("username")
@@ -57,6 +61,8 @@ export default {
       allCards: [],
       deckCards: [],
       cardPool: [],
+
+      packs: null,
     };
   },
   methods: {
@@ -90,7 +96,8 @@ export default {
           method: "GET"
         })
       ]);
-      // this.allCards = cards.data;
+      
+      this.packs = deck.data.packs
       this.deckCards = deck.data.cards;
       
       let cardPoolMap = {}

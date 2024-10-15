@@ -110,6 +110,7 @@ func ConvertToLegacyDeck(deck db.Deck) (db.LegacyDeck, error) {
 		Cards:    cardsSlice,
 		Event:    deck.Event,
 		Cardpool: cardPoolSlice,
+		Packs:    deck.Packs,
 	}, nil
 
 }
@@ -125,6 +126,7 @@ func ConvertFromLegacyDeck(deck db.LegacyDeck) db.Deck {
 		Cards:    ConvertCardsSliceToString(deck.Cards),
 		Event:    deck.Event,
 		Cardpool: ConvertCardsSliceToString(deck.Cardpool),
+		Packs:    deck.Packs,
 	}
 
 }

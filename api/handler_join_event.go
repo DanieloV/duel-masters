@@ -33,14 +33,19 @@ func (api *API) joinEventHandler(w http.ResponseWriter, r *http.Request) {
 	// Generate card pool
 	set := event.Sets[0]
 	var cardPool []string
+	var packs [][]string
 	for i := 0; i < 8; i++ {
 		if i == 4 && len(event.Sets) == 2 {
 			set = event.Sets[1]
 		}
 		pack := GeneratePack(set)
+		var flatPack []string
 		for _, cards := range pack {
-			cardPool = append(cardPool, cards...)
+			flatPack = append(flatPack, cards...)
 		}
+		packs = append(packs, flatPack)
+		// cardPool = append(cardPool, flatPack...)
+
 	}
 
 	newDeck := db.LegacyDeck{
@@ -52,6 +57,7 @@ func (api *API) joinEventHandler(w http.ResponseWriter, r *http.Request) {
 		Cards:    nil,
 		Event:    eventUID,
 		Cardpool: cardPool,
+		Packs:    packs,
 	}
 
 	_, err = db.Decks.InsertOne(r.Context(), services.ConvertFromLegacyDeck(newDeck))
